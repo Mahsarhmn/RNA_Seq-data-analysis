@@ -1,0 +1,924 @@
+---
+title: "Rna_seq Data Analysis"
+output:
+  html_document: default
+  pdf_document: default
+date: '2022-05-31'
+header-includes: \usepackage{booktabs}
+---
+
+```{r setup, include=FALSE}
+## getwd to save object is "C:/Aye sadr/brcan"
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+```{r, echo = FALSE}
+#Load required packages
+library(tidyverse)
+library(bnlearn)  
+library(parallel)  #parallel implementation for bootstrap
+library(igraph)     ### Visualize Networks
+#library(RCy3)       ### Connected R to Cytoscape to Visualize Networks
+library(ggplot2)
+library(hrbrthemes) 
+library(xtable)
+library(kableExtra)  ## Create tabel in latex, Rmarkdown
+library(shiny)
+library(ggVennDiagram)
+library(ggvenn)
+```
+
+```{r, echo = FALSE}
+#Load datasets
+load("RPKM")
+load("N_NM")       ###  Normal vs Non-mutant
+load("N_M")        ###  Normal vs Mutant
+load("M_NM")       ###  Mutant vs Non-mutant
+```
+
+```{r, echo = FALSE}
+#Transpose data
+brexp = RPKM[-c(1,2),]
+
+brexp =  brexp %>% remove_rownames %>% 
+  column_to_rownames(var = "...1") %>%
+  mutate_all(as.double) %>% 
+  t %>% 
+  as.data.frame %>%
+  rownames_to_column (var = "Status")
+```
+
+```{r, echo = FALSE}
+#Extract differentially expressed genes for each comparison
+#dfg1 = M_NM %>% pull(1)
+#MNM = brexp[, dfg1[!dfg1=="?"]]
+
+#MNM_gvar = apply(t(MNM), MARGIN = 1, FUN = var)  
+#MNM_hvar = MNM[ ,MNM_gvar >= quantile(MNM_gvar, probs = 0.57)] #206 #was saved
+load("MNM_hvar.RData")
+
+```
+
+```{r, echo = FALSE}
+#dfg2 = N_M %>% pull(1)
+#NM = brexp[, dfg2[!dfg2=="?"]]
+
+#NM_gvar = apply(t(NM), MARGIN = 1, FUN = var)  
+#NM_hvar = NM[ ,NM_gvar >= quantile(NM_gvar, probs = 0.955)] #204 #was saved
+load("NM_hvar.RData")
+```
+
+```{r, echo = FALSE}
+#dfg3 = N_NM %>% pull(1)
+#NNM = brexp[, dfg3[!dfg3=="?"]]
+
+#NNM_gvar = apply(t(NNM), MARGIN = 1, FUN = var)  
+#NNM_hvar = NNM[ ,NNM_gvar >= quantile(NNM_gvar, probs = 0.95)] #204 #was saved
+load("NNM_hvar.RData")
+```
+
+```{r, echo = FALSE}
+#Apply different types of algorithms to each data set for Mutant vs Non-mutant comparison
+### Score-based Algorithms
+##dag1_MNM = hc(MNM_hvar, score = "bic-g") #was saved
+load("dag1_MNM.RData")
+#dag2_MNM = tabu(MNM_hvar, score = "bic-g")
+#skeleton(dag2_MNM)
+```
+
+```{r, echo = FALSE, fig.show='hide'}
+ig1_MNM = as.igraph(dag1_MNM)
+#ig2_MNM = as.igraph(dag2_MNM)
+
+#palette = colorRampPalette(colors=c("#B6B6B4", "#FF0000"))
+#cols1 = palette(length(as.numeric(names(table(degree(ig1_MNM))))))
+#cols2 = palette(length(as.numeric(names(table(degree(ig2_MNM))))))
+
+
+#dg1 = degree(ig1_MNM)
+#dg2 = degree(ig2_MNM)
+
+ #for(i in 0:length(cols1)){
+  #dg1[which(dg1==i)] = cols1[i+1]
+ #}
+
+ #for(i in 0:length(cols2)){
+  # dg2[which(dg2==i)] = cols2[i+1]
+ #}
+
+#V(ig1_MNM)$color = NULL
+#V(ig2_MNM)$color = dg2
+
+
+```
+**<span style="color: blue;">Leanred structure of BN for Mutant vs Non-mutant </span>**
+```{r, echo = FALSE, fig.width = 8, fig.height = 8}
+l = layout_with_kk(ig1_MNM)
+l = norm_coords(l, ymin=-1, ymax=1, xmin=-1, xmax=1)
+plot(ig1_MNM, edge.arrow.size=.5, edge.arrow.width = .5, vertex.size=(degree(ig1_MNM)+1)*.4,rescale = FALSE, vertex.label.cex=.7,layout = l*1)
+```
+
+```{r, echo = FALSE, fig.width = 8, fig.height = 8, fig.show='hide'}
+#l = layout_with_kk(ig2)
+#l = norm_coords(l, ymin=-1, ymax=1, xmin=-1, xmax=1)
+#plot(ig2, edge.arrow.size=.5, edge.arrow.width = .5, vertex.size=(degree(ig2)+1)*.5,rescale = FALSE, vertex.label.cex=.7,layout = l*1)
+
+```
+
+```{r, echo = FALSE}
+### Constraint-based Algorithms
+#dag3_MNM = gs(MNM_hvar)
+#skeleton(dag3_MNM)
+#dag4_MNM = mmpc(MNM_hvar)
+#skeleton(dag4_MNM)
+```
+
+```{r, echo = FALSE, fig.width = 8, fig.height = 8}
+#ig3 = as.igraph(dag3_MNM)
+#ig4 = as.igraph(dag4_MNM)
+
+#l = layout_with_kk(ig3)
+#l = norm_coords(l, ymin=-1, ymax=1, xmin=-1, xmax=1)
+#plot(ig3, edge.arrow.size=.5, edge.arrow.width = .5, vertex.size=(degree(ig2)+1)*.5,rescale = FALSE, vertex.label.cex=.7,layout = l*1)
+```
+
+```{r, echo = FALSE, fig.width = 8, fig.height = 8}
+#l = layout_with_kk(ig4)
+#l = norm_coords(l, ymin=-1, ymax=1, xmin=-1, xmax=1)
+#plot(ig4, edge.arrow.size=.5, edge.arrow.width = .5, vertex.size=(degree(ig4)+1)*.5,rescale = FALSE, vertex.label.cex=.7,layout = l*1)
+
+```
+
+```{r, echo = FALSE}
+### Hybrid Algorithms
+#dag5_MNM = mmhc(MNM_hvar, maximize.args = "bic-g")
+#skeleton(dag5_MNM)
+#dag6_MNM = rsmax2(MNM_hvar, maximize.args = "bic-g")
+#skeleton(cextend(dag6_MNM))
+```
+
+```{r, echo = FALSE, fig.width = 8, fig.height = 8}
+#ig5 = as.igraph(dag5_MNM)
+#ig6 = as.igraph(dag6_MNM)
+
+#l = layout_with_kk(ig5)
+#l = norm_coords(l, ymin=-1, ymax=1, xmin=-1, xmax=1)
+#plot(ig5, edge.arrow.size=.5, edge.arrow.width = .5, vertex.size=(degree(ig5)+1)*.5,rescale = FALSE, vertex.label.cex=.7,layout = l*1)
+```
+
+```{r, echo = FALSE, echo = FALSE, fig.width = 8, fig.height = 8}
+#l = layout_with_kk(ig6)
+#l = norm_coords(l, ymin=-1, ymax=1, xmin=-1, xmax=1)
+#plot(ig6, edge.arrow.size=.5, edge.arrow.width = .5, vertex.size=(degree(ig6)+1)*.5,rescale = FALSE, vertex.label.cex=.7,layout = l*1)
+```
+
+```{r, echo = FALSE, echo = FALSE}
+#Apply different types of algorithms to each data set for Normal vs Mutant comparison
+###Score-based Algorithms
+#dag1_NM = hc(NM_hvar, score = "bic-g") ##was saved
+load("dag1_NM.RData")
+#skeleton(dag1_NM)
+#dag2_NM = tabu(NM_hvar, score = "bic-g")
+#skeleton(dag2_NM)
+```
+**<span style="color: blue;">Leanred structure of BN for Normal vs Mutant </span>**
+```{r, echo = FALSE, fig.width = 8, fig.height = 8}
+ig1_NM = as.igraph(dag1_NM)
+#ig2 = as.igraph(dag2_NM)
+
+l = layout_with_kk(ig1_NM)
+l = norm_coords(l, ymin=-1, ymax=1, xmin=-1, xmax=1)
+plot(ig1_NM, edge.arrow.size=.5, edge.arrow.width = .5, vertex.size=(degree(ig1_NM)+1)*.35,rescale = FALSE, vertex.label.cex=.7,layout = l*1)
+```
+
+```{r, echo = FALSE, fig.width = 8, fig.height = 8}
+#l = layout_with_kk(ig2)
+#l = norm_coords(l, ymin=-1, ymax=1, xmin=-1, xmax=1)
+#plot(ig2, edge.arrow.size=.5, edge.arrow.width = .5, vertex.size=(degree(ig2)+1)*.5,rescale = FALSE, vertex.label.cex=.7,layout = l*1)
+```
+
+```{r, echo = FALSE}
+### , Constraint-based Algorithms
+#dag3_NM = gs(NM_hvar)
+#skeleton(dag3_NM)
+#dag4_NM = mmpc(NM_hvar)
+#skeleton(dag4_NM)
+```
+
+```{r, echo = FALSE, fig.width = 8, fig.height = 8}
+#ig3 = as.igraph(dag3_NM)
+#ig4 = as.igraph(dag4_NM)
+
+#l = layout_with_kk(ig3)
+#l = norm_coords(l, ymin=-1, ymax=1, xmin=-1, xmax=1)
+#plot(ig3, edge.arrow.size=.5, edge.arrow.width = .5, vertex.size=(degree(ig3)+1)*.5,rescale = FALSE, vertex.label.cex=.7,layout = l*1)
+```
+
+```{r, echo = FALSE, fig.width = 8, fig.height = 8}
+#l = layout_with_kk(ig2)
+#l = norm_coords(l, ymin=-1, ymax=1, xmin=-1, xmax=1)
+#plot(ig4, edge.arrow.size=.5, edge.arrow.width = .5, vertex.size=(degree(ig4)+1)*.5,rescale = FALSE, vertex.label.cex=.7,layout = l*1)
+```
+
+```{r, echo = FALSE}
+###Hybrid Algorithms
+#dag5_NM = mmhc(NM_hvar, maximize.args = "bic-g")
+#skeleton(dag5_NM)
+#dag6_NM = rsmax2(NM_hvar, maximize.args = "bic-g")
+#skeleton(dag6_NM)
+```
+
+```{r, echo = FALSE, fig.width = 8, fig.height = 8}
+#ig5 = as.igraph(dag5_NM)
+#ig6 = as.igraph(dag6_NM)
+
+#l = layout_with_kk(ig5)
+#l = norm_coords(l, ymin=-1, ymax=1, xmin=-1, xmax=1)
+#plot(ig5, edge.arrow.size=.5, edge.arrow.width = .5, vertex.size=(degree(ig5)+1)*.5,rescale = FALSE, vertex.label.cex=.7,layout = l*1)
+```
+
+```{r, echo = FALSE,fig.width = 8, fig.height = 8}
+#l = layout_with_kk(ig6)
+#l = norm_coords(l, ymin=-1, ymax=1, xmin=-1, xmax=1)
+#plot(ig6, edge.arrow.size=.5, edge.arrow.width = .5, vertex.size=(degree(ig6)+1)*.5,rescale = FALSE, vertex.label.cex=.7,layout = l*1)
+```
+
+```{r, echo = FALSE}
+#Apply different types of algorithms to each data set for Normal vs Mutant comparison
+###Score-based Algorithms
+#dag1_NNM = hc(NNM_hvar, score = "bic-g") ##was saved
+load("dag1_NNM.RData")
+#dag2_NNM = tabu(NNM_hvar, score = "bic-g")
+#skeleton(dag2_NNM)
+```
+**<span style="color: blue;">Leanred structure of BN for Normal vs Non-mutant </span>**
+```{r, echo = FALSE, fig.width = 8, fig.height = 8}
+ig1_NNM = as.igraph(dag1_NNM)
+#ig2 = as.igraph(dag2_NNM)
+
+l = layout_with_kk(ig1_NNM)
+l = norm_coords(l, ymin=-1, ymax=1, xmin=-1, xmax=1)
+plot(ig1_NNM, edge.arrow.size=.5, edge.arrow.width = .5, vertex.size=(degree(ig1_NNM)+1)*.35,rescale = FALSE, vertex.label.cex=.7,layout = l*1)
+```
+
+```{r, echo = FALSE,fig.width = 8, fig.height = 8}
+#l = layout_with_kk(ig2)
+#l = norm_coords(l, ymin=-1, ymax=1, xmin=-1, xmax=1)
+#plot(ig2, edge.arrow.size=.5, edge.arrow.width = .5, vertex.size=(degree(ig2)+1)*.5,rescale = FALSE, vertex.label.cex=.7,layout = l*1)
+```
+
+```{r, echo = FALSE}
+###Constraint-based Algorithms
+#dag3_NNM = gs(NNM_hvar)
+#dag4_NNM = mmpc(NNM_hvar)
+```
+
+```{r, echo = FALSE}
+###Hybrid Algorithms
+#dag5_NNM = mmhc(NNM_hvar, maximize.args = "bic-g")
+#skeleton(dag5_NNM)
+#dag6_NNM = rsmax2(NNM_hvar, maximize.args = "bic-g")
+#skeleton(dag6_NNM)
+```
+
+```{r,echo = FALSE, fig.width = 8, fig.height = 8}
+#ig5 = as.igraph(dag5_NNM)
+#ig6 = as.igraph(dag6_NNM)
+
+#l = layout_with_kk(ig5)
+#l = norm_coords(l, ymin=-1, ymax=1, xmin=-1, xmax=1)
+#plot(ig5, edge.arrow.size=.5, edge.arrow.width = .5, vertex.size=(degree(ig5)+1)*.5,rescale = FALSE, vertex.label.cex=.7,layout = l*1)
+```
+
+**<span style="color: blue;">Some network parameters for each comparison</span>**
+
+
+```{r, echo = FALSE, fig.width = 8, fig.height = 8}
+#l = layout_with_kk(ig6)
+#l = norm_coords(l, ymin=-1, ymax=1, xmin=-1, xmax=1)
+#plot(ig6, edge.arrow.size=.5, edge.arrow.width = .5, vertex.size=(degree(ig6)+1)*.5,rescale = FALSE, vertex.label.cex=.7,layout = l*1)
+```
+
+```{r, echo = FALSE, fig.align = 'center'}
+par_MNM = c( nnodes(dag1_MNM), narcs(dag1_MNM), mean(degree(ig1_MNM)), edge_density(ig1_MNM),  diameter(ig1_MNM), transitivity(as.undirected(ig1_MNM)))
+par_NM =  c( nnodes(dag1_NM), narcs(dag1_NM), mean(degree(ig1_NM)), edge_density(ig1_NM),  diameter(ig1_NM), transitivity(as.undirected(ig1_NM)))
+par_NNM = c( nnodes(dag1_NNM), narcs(dag1_NNM), mean(degree(ig1_NNM)), edge_density(ig1_NNM),  diameter(ig1_NNM), transitivity(as.undirected(ig1_NNM)))
+
+
+list_of_pars = list(par_MNM, par_NM, par_NNM)
+Comparison = c("Mutant-Nonmutant", "Normal-Mutant", "Normal-Nonmutant")
+
+pars = tibble(Comparison = unique(Comparison), Parameters = unique(list_of_pars )) %>% 
+            unnest_wider(Parameters)%>%
+            set_names(c("Comparison", "Gene Count", "Relation Count", "Average Degree", "Density", "Diameter", "Clustering Coefficient")) %>%
+            kable( booktabs=T) %>%
+            kable_styling()
+pars
+    
+```
+
+**<span style="color: blue;">Venn diagram of shared genes between different comparisons</span>**
+
+
+```{r, echo = FALSE, fig.align = 'center'}
+
+Nset1 = nodes(dag1_MNM)
+Nset2 = nodes(dag1_NM)
+Nset3 = nodes(dag1_NNM)
+
+SharedGenes = Reduce(intersect, list(Nset1, Nset2, Nset3))
+
+
+x = list(Mutant_Nonmutant = Nset1, Normal_Mutant = Nset2, Normal_Nonmutant = Nset3)
+
+ggvenn(
+  x, 
+  fill_color = c("#23ebc3", "#FFFF00", "#EE19D2"),
+  stroke_size = 0.5, set_name_size = 4
+  )
+
+  
+```
+
+**<span style="color: blue;">Gene degree Box_plot for each comparison</span>**
+
+
+```{r, echo = FALSE, fig.align = 'center'}
+list_of_degrees = list(dg_MNM = degree(ig1_MNM), dg_NM  = degree(ig1_NM), dg_NNM = degree(ig1_NNM))
+list_of_outdegrees = list(dg_MNM = degree(ig1_MNM, mode = c("out")), dg_NM  = degree(ig1_NM, mode = c("out")), dg_NNM = degree(ig1_NNM, mode = c("out")))
+list_of_indegrees = list(dg_MNM = degree(ig1_MNM, mode = c("in")), dg_NM  = degree(ig1_NM, mode = c("in")), dg_NNM = degree(ig1_NNM, mode = c("in")))
+Comparison = c("Mutant-Nonmutant", "Normal-Mutant", "Normal-Nonmutant")
+
+dg = tibble(Comparison = unique(Comparison), Degree = unique(list_of_degrees ), Outdegree = unique(list_of_outdegrees), 
+            Indegree = unique(list_of_indegrees)) %>% 
+            unnest_longer(c(Degree, Outdegree, Indegree))
+      
+
+x = ggplot(dg, aes(x = Comparison, y = Degree, fill = Comparison)) +
+    geom_boxplot()+
+    scale_fill_manual(values=c("#23ebc3", "#FFFF00", "#EE19D2")) 
+x
+```
+
+
+**<span style="color: blue;">Gene degree distribution for each comparison</span>**
+
+```{r, echo = FALSE, fig.align = 'center'}
+p <- dg %>%
+  ggplot( aes(x=Degree, fill=Comparison)) +
+  geom_histogram( binwidth = 3, color="#e9ecef", alpha=0.6, position = 'identity') +
+  facet_wrap(~Comparison)+
+  geom_density(alpha = 0.4, aes(y =..count..*3, col = Comparison), fill = NA, lwd = .8)+
+  scale_fill_manual(values=c("#23ebc3", "#FFFF00", "#EE19D2")) +
+  scale_color_manual(values=c("#23ebc3", "#FFFF00", "#EE19D2"))+
+  labs(fill="", x = "Degree", y = "Count")+
+  theme(legend.position="none")
+p
+  
+  
+```
+
+
+**<span style="color: blue;">List of top ten genes by degree in each comparison (<span style="color: #E91E63;">shared genes are highlighted</span> )  </span>**
+
+```{r, echo = FALSE}
+library(kableExtra)
+library(shiny)
+t1 = top10_NNM = dg %>% 
+            filter(Comparison == "Mutant-Nonmutant") %>%
+            mutate(Degree_id = cell_spec(Degree_id , background = ifelse(Degree_id  %in% SharedGenes, "#18FFFF", "white")))%>%
+            arrange(desc(Degree)) %>% 
+            mutate(row_name = row_number())%>% 
+            head(100) %>%
+            select("row_name", "Degree_id", "Degree", "Outdegree", "Indegree") %>%
+            kable(escape = F,  booktabs=T, col.names = c("", "Gene Symbol", "Total-degree", "Out-degree", "In-Degree"), caption = "Mutant_Nonmutant") %>%
+            kable_styling()
+  
+t2 = top10_NM = dg %>% 
+            filter(Comparison == "Normal-Mutant") %>%
+            mutate(Degree_id = cell_spec(Degree_id , background = ifelse(Degree_id  %in% SharedGenes, "#18FFFF", "white")))%>%
+            arrange(desc(Degree)) %>% 
+            mutate(row_name = row_number())%>% 
+            head(100) %>%
+            select("row_name", "Degree_id", "Degree", "Outdegree", "Indegree") %>%
+            kable(escape = F, booktabs=T, col.names = c("", "Gene Symbol", "Total-degree", "Out-degree", "In-Degree"), caption = "Normal_Mutant") %>% 
+            kable_styling()
+
+t3 = top10_NNM = dg %>% 
+            filter(Comparison == "Normal-Nonmutant") %>%
+            mutate(Degree_id = cell_spec(Degree_id , background = ifelse(Degree_id  %in% SharedGenes, "#18FFFF", "white")))%>%
+            arrange(desc(Degree)) %>% 
+            mutate(row_name = row_number())%>% 
+            head(100) %>%
+            select("row_name", "Degree_id", "Degree", "Outdegree", "Indegree") %>%
+            kable(escape = F,  booktabs=T, col.names = c("", "Gene Symbol", "Total-degree", "Out-degree", "In-Degree"), caption = "Normal_Nonmutant") %>% 
+            kable_styling()
+
+fluidRow(
+    column(2, HTML(t1), offset = 2),
+    column(2, HTML(t2), offset = 2),
+    column(2, HTML(t3), offset = 2),
+)
+```
+
+
+
+**<span style="color: blue;">List of top ten genes by betweenness in each comparison (<span style="color: #E91E63;">shared genes are highlighted</span> )  </span>**
+
+```{r, echo = FALSE}
+list_of_betweenness = list(bw_MNM = betweenness(ig1_MNM), bw_NM  = betweenness(ig1_NM), bw_NNM = betweenness(ig1_NNM))
+Comparison = c("Mutant-Nonmutant", "Normal-Mutant", "Normal-Nonmutant")
+
+bw = tibble(Comparison = unique(Comparison), Betweenness = unique(list_of_betweenness)) %>% 
+            unnest_longer(Betweenness)
+
+t1_bw = top10_bw_NNM = bw %>% 
+            filter(Comparison == "Mutant-Nonmutant") %>%
+            mutate(Betweenness_id = cell_spec(Betweenness_id, background = ifelse(Betweenness_id %in% SharedGenes, "#18FFFF", "white")))%>%
+            arrange(desc(Betweenness)) %>% 
+            mutate(row_name = row_number())%>% 
+            head(100) %>%
+            select("row_name", "Betweenness_id", "Betweenness") %>%
+            kable( escape = F, booktabs=T, col.names = c("", "Gene Symbol", "Betweenness"), caption = "Mutant_Nonmutant") %>%
+            kable_styling()
+  
+t2_bw = top10_bw_NM = bw %>% 
+            filter(Comparison == "Normal-Mutant") %>%
+              mutate(Betweenness_id = cell_spec(Betweenness_id, background = ifelse(Betweenness_id %in% SharedGenes, "#18FFFF", "white")))%>%
+            arrange(desc(Betweenness)) %>% 
+            mutate(row_name = row_number())%>% 
+            head(100) %>%
+            select("row_name", "Betweenness_id", "Betweenness") %>%
+            kable( escape = F, booktabs=T, col.names = c("", "Gene Symbol", "Betweenness"), caption = "Normal_Mutant") %>% 
+            kable_styling()
+
+t3_bw = top10_bw_NNM = bw %>% 
+            filter(Comparison == "Normal-Nonmutant") %>%
+            mutate(Betweenness_id = cell_spec(Betweenness_id, background = ifelse(Betweenness_id %in% SharedGenes, "#18FFFF", "white")))%>%
+            arrange(desc(Betweenness)) %>% 
+            mutate(row_name = row_number())%>% 
+            head(100) %>%
+            select("row_name", "Betweenness_id", "Betweenness") %>%
+            kable(escape = F,  booktabs=T, col.names = c("", "Gene Symbol", "Betweenness"), caption = "Normal_Nonmutant") %>% 
+            kable_styling()
+
+fluidRow(
+    column(2, HTML(t1_bw), offset = 2),
+    column(2, HTML(t2_bw), offset = 2),
+    column(2, HTML(t3_bw), offset = 2),
+)
+```
+
+**<span style="color: blue;">List of top ten genes by closeness in each comparison (<span style="color: #E91E63;">Shared genes are highlighted</span> ) </span>**
+
+```{r, echo = FALSE}
+list_of_cl = list(cl_MNM = closeness(ig1_MNM), cl_NM  = closeness(ig1_NM), cl_NNM = closeness(ig1_NNM))
+Comparison = c("Mutant-Nonmutant", "Normal-Mutant", "Normal-Nonmutant")
+
+cl = tibble(Comparison = unique(Comparison), Closeness = unique(list_of_cl)) %>% 
+            unnest_longer(Closeness)
+      
+t1_cl = top10_cl_NNM = cl %>% 
+  filter(Comparison == "Mutant-Nonmutant") %>%
+  mutate(Closeness_id = cell_spec(Closeness_id, background = ifelse(Closeness_id %in% SharedGenes, "#18FFFF", "white")))%>%
+  arrange(desc(Closeness)) %>% 
+  mutate(row_name = row_number())%>% 
+  head(100) %>% 
+  select("row_name", "Closeness_id", "Closeness") %>%
+  kable( escape = F, booktabs=T, col.names = c("", "Gene Symbol", "Closeness"), caption = "Mutant_Nonmutant") %>%
+  kable_styling()
+  
+t2_cl = top10_cl_NM = cl %>% 
+  filter(Comparison == "Normal-Mutant")%>%
+  mutate(Closeness_id = cell_spec(Closeness_id, background = ifelse(Closeness_id %in% SharedGenes, "#18FFFF", "white")))%>%
+  arrange(desc(Closeness)) %>% 
+  mutate(row_name = row_number())%>% 
+  head(100) %>%
+  select("row_name", "Closeness_id", "Closeness") %>%
+  kable(escape = F, booktabs=T, col.names = c("", "Gene Symbol", "Closeness"), caption = "Normal_Mutant") %>%
+  kable_styling()
+
+t3_cl = top10_cl_NNM = cl %>% 
+  filter(Comparison == "Normal-Nonmutant") %>%
+  mutate(Closeness_id = cell_spec(Closeness_id, background = ifelse(Closeness_id %in% SharedGenes, "#18FFFF", "white")))%>%
+  arrange(desc(Closeness)) %>% 
+  mutate(row_name = row_number())%>%  
+  head(100) %>%
+  select("row_name", "Closeness_id", "Closeness") %>%
+  kable(escape = F, booktabs=T, col.names = c("", "Gene Symbol", "Closeness"), caption = "Normal_Nonmutant") %>% 
+  kable_styling()
+
+fluidRow(
+    column(2, HTML(t1_cl), offset = 2),
+    column(2, HTML(t2_cl), offset = 2),
+    column(2, HTML(t3_cl), offset = 2),
+)
+```
+
+**<span style="color: blue;">Gene degree distribution for each comparison</span>**
+
+
+**<span style="color: blue;">Summary statistics of edge weights</span>**
+
+
+```{r, echo = FALSE}
+##boot_MNM = boot.strength(MNM_hvar, algorithm = "hc", algorithm.args = list(score = "bic-g"), R = 100) ##was saved
+load("boot_MNM.RData")
+#boot_NM = boot.strength(NM_hvar, algorithm = "hc", algorithm.args = list(score = "bic-g"), R = 100, cluster = cl)
+load("boot_NM.RData")
+#boot_NNM = boot.strength(NNM_hvar, algorithm = "hc", algorithm.args = list(score = "bic-g"), R = 100)
+load("boot_NNM.RData")
+
+boot_arcs_MNM = bind_rows(data.frame(arcs(dag1_MNM)),data.frame(boot_MNM[,c(1,2)]))
+dp_MNM = duplicated(boot_arcs_MNM)
+Weight_MNM = bind_rows(data.frame(arcs(dag1_MNM)),data.frame(boot_MNM))[dp_MNM,] 
+names(Weight_MNM) = c("From", "To", "Strength", "Direction")
+
+boot_arcs_NM = bind_rows(data.frame(arcs(dag1_NM)),data.frame(boot_NM[,c(1,2)]))
+dp_NM = duplicated(boot_arcs_NM)
+Weight_NM = bind_rows(data.frame(arcs(dag1_NM)),data.frame(boot_NM))[dp_NM,]
+names(Weight_NM) = c("From", "To", "Strength", "Direction")
+
+boot_arcs_NNM = bind_rows(data.frame(arcs(dag1_NNM)),data.frame(boot_NNM[,c(1,2)]))
+dp_NNM = duplicated(boot_arcs_NNM)
+Weight_NNM = bind_rows(data.frame(arcs(dag1_NNM)),data.frame(boot_NNM))[dp_NNM,]
+names(Weight_NNM) = c("From", "To", "Strength", "Direction")
+
+list_of_weigths = list(data.frame(Weight_MNM), data.frame(Weight_NM) , data.frame(Weight_NNM))
+Comparison = c("Mutant-Nonmutant", "Normal-Mutant", "Normal-Nonmutant")
+
+wg = tibble(Comparison = unique(Comparison), Weights = unique(list_of_weigths )) %>% 
+     unnest()
+
+st = wg %>%  
+     group_by(Comparison) %>%
+     summarise_at(vars(Strength ), list(Min = min, Mean = mean, Max = max)) %>%
+     kable( booktabs=T) %>% 
+     kable_styling()
+
+
+st
+
+
+```
+
+**<span style="color: blue;">Edge weight distribution plot for each comparison</span>**
+
+
+```{r, echo = FALSE, fig.align = 'center'}
+g <- wg %>%
+  ggplot( aes(x=Strength , fill=Comparison)) +
+  geom_histogram( binwidth = .07,  color="#e9ecef", alpha=0.6, position = 'identity') +
+  facet_wrap(~Comparison )+
+  geom_density(alpha = 0.4, aes(y =..count..*.07, col = Comparison), fill = NA, lwd = .8)+
+  scale_fill_manual(values=c("#23ebc3", "#FFFF00", "#EE19D2")) +
+  scale_color_manual(values=c("#23ebc3", "#FFFF00", "#EE19D2"))+
+  labs(fill="", x = "Strength ", y = "Count")+
+  theme(legend.position="none")
+g
+  
+  
+```
+
+**<span style="color: blue;">The tables of the most scored nodes(<span style="color: #E91E63;">genes with the highest sum of weights of connected edges/ shared genes are highlighted</span> )  </span>**
+
+
+
+
+```{r, echo = FALSE, fig.align = 'center'}
+tbl1_From = most_scored_MNM_From = wg %>% 
+            filter(Comparison == "Mutant-Nonmutant") %>%
+            select("Comparison", "From", "Strength")
+tbl1_To = most_scored_MNM_To = wg %>% 
+            filter(Comparison == "Mutant-Nonmutant") %>%
+            select("Comparison", "To", "Strength")%>%
+            setNames(c("Comparison", "From", "Strength"))
+most_scored_MNM = bind_rows(tbl1_From, tbl1_To) %>%
+       group_by(From) %>%
+       summarise_at(vars(Strength ), list(Sum = sum)) %>%
+       arrange(desc(Sum)) %>%
+       mutate(row_name = row_number())%>% 
+       head(100) %>%
+       select("row_name", "From", "Sum") 
+       
+tbl1 = most_scored_MNM %>%
+       mutate(From = cell_spec(From, background = ifelse(From %in% SharedGenes, "#18FFFF", "white")))%>%
+       kable(escape = F, booktabs=T, col.names = c("", "Gene Symbol", "Score"), caption = "Mutant_Nonmutant") %>%
+       kable_styling()
+
+
+tbl2_From = most_scored_NM_From = wg %>% 
+            filter(Comparison == "Normal-Mutant") %>%
+            select("Comparison", "From", "Strength") 
+tbl2_To = most_scored_NM_To = wg %>% 
+            filter(Comparison == "Normal-Mutant") %>%
+            select("Comparison", "To", "Strength") %>%
+            setNames(c("Comparison", "From", "Strength"))
+most_scored_NM = bind_rows(tbl2_From, tbl2_To) %>%
+            group_by(From) %>%
+            summarise_at(vars(Strength ), list(Sum = sum)) %>%
+            arrange(desc(Sum)) %>%
+            mutate(row_name = row_number())%>% 
+            head(100) %>%
+            select("row_name", "From", "Sum") 
+tbl2 = most_scored_NM %>%
+       mutate(From = cell_spec(From, background = ifelse(From %in% SharedGenes, "#18FFFF", "white")))%>%
+       kable(escape = F,  booktabs=T, col.names = c("", "Gene Symbol", "Score"), caption = "Normal_Mutant") %>%
+       kable_styling()
+
+tbl3_From = most_scored_NNM_From = wg %>% 
+            filter(Comparison == "Normal-Nonmutant") %>%
+            select("Comparison", "From", "Strength") 
+
+tbl3_To = most_scored_NNM_To = wg %>% 
+            filter(Comparison == "Normal-Nonmutant") %>%
+            select("Comparison", "To", "Strength") %>%
+            setNames(c("Comparison", "From", "Strength"))
+
+most_scored_NNM =  bind_rows(tbl3_From, tbl3_To) %>%
+            group_by(From) %>%
+            summarise_at(vars(Strength ), list(Sum = sum)) %>%
+            arrange(desc(Sum)) %>%
+            mutate(row_name = row_number())%>% 
+            head(100) %>%
+            select("row_name", "From", "Sum") 
+
+tbl3 = most_scored_NNM %>%
+       mutate(From = cell_spec(From, background = ifelse(From %in% SharedGenes, "#18FFFF", "white")))%>%
+            kable(escape = F, booktabs=T, col.names = c("", "Gene Symbol", "Score"), caption = "Normal_Nonmutant") %>%
+            kable_styling()
+        
+
+fluidRow(
+    column(2, HTML(tbl1), offset = 2),
+    column(2, HTML(tbl2), offset = 2),
+    column(2, HTML(tbl3), offset = 2),
+)
+
+```
+**<span style="color: blue;">List of top ten strongest connections for each comparison</span>**
+
+
+
+```{r, echo = FALSE, fig.align = 'center'}
+sw_MNM = bind_rows(tbl1_From, tbl1_To) %>%         #sum of the weight of connected edges for each node 
+                 group_by(From) %>%
+                 summarise_at(vars(Strength ), list(Sum = sum))  %>% pull(2, From)
+   
+tb1 = st_con_MNM = wg %>% 
+            filter(Comparison == "Mutant-Nonmutant") %>%
+            mutate(SF = sw_MNM[From]) %>%    ##sum of the weight of connected edges for each node that is parent
+            mutate(ST = sw_MNM[To])  %>%   #sum of the weight of connected edges for each node child
+            mutate(EdgeScore = SF*ST) %>%
+            filter(Strength==1) %>% 
+            arrange(desc(EdgeScore)) %>%
+            mutate(row_name = row_number())%>% 
+            head(20) %>%
+            select("row_name", "From", "To", "Strength", "EdgeScore") %>%
+            kable( booktabs=T, col.names = c("", "From", "To", "Strength", "Edge Score"), caption = "Mutant_Nonmutant") %>%
+            kable_styling()
+        
+sw_NM = bind_rows(tbl2_From, tbl2_To) %>%         #sum of the weight of connected edges for each node 
+                 group_by(From) %>%
+                 summarise_at(vars(Strength ), list(Sum = sum))  %>% pull(2, From)
+
+tb2 = st_con_NM = wg %>% 
+            filter(Comparison == "Normal-Mutant") %>%
+            mutate(SF = sw_NM[From]) %>%    ##sum of the weight of connected edges for each node that is parent
+            mutate(ST = sw_NM[To])  %>%   #sum of the weight of connected edges for each node child
+            mutate(EdgeScore = SF*ST) %>%
+            filter(Strength==1) %>% 
+            arrange(desc(EdgeScore)) %>%
+            mutate(row_name = row_number())%>% 
+            head(20) %>%
+            select("row_name", "From", "To", "Strength", "EdgeScore") %>%
+            kable( booktabs=T, col.names = c("", "From", "To", "Strength", "Edge Score"), caption = "Normal_Mutant") %>%
+            kable_styling()
+
+sw_NNM = bind_rows(tbl3_From, tbl3_To) %>%         #sum of the weight of connected edges for each node 
+                 group_by(From) %>%
+                 summarise_at(vars(Strength ), list(Sum = sum))  %>% pull(2, From)
+
+tb3 = st_con_NNM = wg %>% 
+            filter(Comparison == "Normal-Nonmutant") %>%
+            mutate(SF = sw_NNM[From]) %>%    ##sum of the weight of connected edges for each node that is parent
+            mutate(ST = sw_NNM[To])  %>%   #sum of the weight of connected edges for each node child
+            mutate(EdgeScore = SF*ST) %>%
+            filter(Strength==1) %>% 
+            arrange(desc(EdgeScore)) %>%
+            mutate(row_name = row_number())%>% 
+            head(20) %>%
+            select("row_name", "From", "To", "Strength", "EdgeScore") %>%
+            kable( booktabs=T, col.names = c("", "From", "To", "Strength", "Edge Score"), caption = "Normal_Nonmutant") %>%
+            kable_styling()
+        
+
+fluidRow(
+    column(3, HTML(tb1), offset = 2),
+    column(3, HTML(tb2), offset = 2),
+    column(3, HTML(tb3), offset = 2),
+)
+
+```
+
+**<span style="color: blue;">Venn diagram of shared hub genes (<span style="color: #E91E63;">with the highest sum of weights of connected edges</span>)</span>**
+
+
+
+
+
+```{r, echo = FALSE, fig.align = 'center'}
+
+set1 = tbl1 = bind_rows(tbl1_From, tbl1_To) %>%
+       group_by(From) %>%
+       summarise_at(vars(Strength ), list(Sum = sum)) %>%
+       arrange(desc(Sum)) %>%
+       mutate(row_name = row_number())%>% 
+       head(100) %>% pull(1)
+
+set2 = tbl2 = bind_rows(tbl2_From, tbl2_To) %>%
+            group_by(From) %>%
+            summarise_at(vars(Strength ), list(Sum = sum)) %>%
+            arrange(desc(Sum)) %>%
+            mutate(row_name = row_number())%>% 
+            head(100) %>% pull(1)
+
+
+            
+set3 = tbl3 =  bind_rows(tbl3_From, tbl3_To) %>%
+            group_by(From) %>%
+            summarise_at(vars(Strength ), list(Sum = sum)) %>%
+            arrange(desc(Sum)) %>%
+            mutate(row_name = row_number())%>% 
+            head(100) %>% pull(1)
+
+
+
+x = list(Mutant_Nonmutant = set1, Normal_Mutant = set2, Normal_Nonmutant = set3)
+
+ggvenn(
+  x, 
+  fill_color = c("#23ebc3", "#FFFF00", "#EE19D2"),
+  stroke_size = 0.5, set_name_size = 4
+  )
+
+  
+```
+
+
+**<span style="color: blue;">Louvain community detection for each comparison (<span style="color: #E91E63;">considering an undirected graph/ hub genes "with the highest sum of weights of connected edges" are highlighted</span>)</span>**
+```{r, echo = FALSE, fig.align = 'center', fig.width = 8, fig.height = 8}
+
+hub_MNM  = most_scored_MNM %>% pull(2)
+hub_NM   = most_scored_NM %>% pull(2)
+hub_NNM  = most_scored_NNM %>% pull(2)
+
+set.seed(1)
+c1_lo = clusterlouvain_MNM = cluster_louvain(as.undirected(ig1_MNM))
+mc1_lo =  tibble(rownames_to_column(as.data.frame(cbind(Cluster = membership(c1_lo))), "Gene")) %>%
+       mutate(Cluster = as.character(Cluster)) %>%
+       group_by(Cluster) %>% 
+       mutate(Gene = cell_spec(Gene, background = ifelse(Gene %in% hub_MNM , "#18FFFF", "white"))) %>%
+       nest() %>%
+       kable(escape = F, booktabs=T, col.names = c("Cluster", "Content"), caption = "Mutant_Nonmutant") %>%
+       kable_styling()
+mc1_lo 
+
+set.seed(1)
+c2_lo = clusterlouvain_NM = cluster_louvain(as.undirected(ig1_NM))
+mc2_lo =  tibble(rownames_to_column(as.data.frame(cbind(Cluster = membership(c2_lo))), "Gene")) %>%
+       mutate(Cluster = as.character(Cluster)) %>%
+       group_by(Cluster) %>%
+       mutate(Gene = cell_spec(Gene, background = ifelse(Gene %in% hub_NM , "#18FFFF", "white"))) %>%
+       nest() %>%
+       kable(escape = F, booktabs=T, col.names = c("Cluster", "Content"), caption = "Normal_Mutant") %>%
+       kable_styling()
+mc2_lo
+
+set.seed(1)
+c3_lo = clusterlouvain_NNM = cluster_louvain(as.undirected(ig1_NNM))
+mc3_lo =  tibble(rownames_to_column(as.data.frame(cbind(Cluster = membership(c3_lo))), "Gene")) %>%
+       mutate(Cluster = as.character(Cluster)) %>%
+       group_by(Cluster) %>%
+       mutate(Gene = cell_spec(Gene, background = ifelse(Gene %in% hub_NNM , "#18FFFF", "white"))) %>%
+       nest() %>%
+       kable(escape = F,  booktabs=T, col.names = c("Cluster", "Content"), caption = "Normal_Nonmutant") %>%
+       kable_styling()
+mc3_lo
+
+```
+
+**<span style="color: blue;">Infomap community detection for each comparison (<span style="color: #E91E63;">considering a directed graph/ hub genes "with the highest sum of weights of connected edges" are highlighted</span>)</span>**
+
+
+
+
+
+```{r, echo = FALSE, fig.align = 'center', fig.width = 8, fig.height = 8}
+
+set.seed(1)
+c1_inf = infomap.community_MNM = infomap.community(ig1_MNM)
+mc1_inf =  tibble(rownames_to_column(as.data.frame(cbind(Cluster = membership(c1_inf))), "Gene")) %>%
+       mutate(Cluster = as.character(Cluster)) %>%
+       group_by(Cluster) %>% 
+       mutate(Gene = cell_spec(Gene, background = ifelse(Gene %in% hub_MNM , "#18FFFF", "white"))) %>%
+       nest() %>%
+       kable(escape = F, booktabs=T, col.names = c("Cluster", "Conten"), caption = "Mutant_Nonmutant") %>%
+       kable_styling()
+mc1_inf    
+
+set.seed(1)
+c2_inf = infomap.community_NM = infomap.community(ig1_NM)
+mc2_inf =  tibble(rownames_to_column(as.data.frame(cbind(Cluster = membership(c2_inf))), "Gene")) %>%
+       mutate(Cluster = as.character(Cluster)) %>%
+       group_by(Cluster) %>%
+       mutate(Gene = cell_spec(Gene, background = ifelse(Gene %in% hub_NM , "#18FFFF", "white"))) %>%
+       nest() %>%
+       kable(escape = F, booktabs = T, col.names = c("Cluster", "Content"), caption = "Normal_Mutant") %>%
+       kable_styling()
+mc2_inf
+
+set.seed(1)
+c3_inf = infomap.community_NNM = infomap.community(ig1_NNM)
+mc3_inf =  tibble(rownames_to_column(as.data.frame(cbind(Cluster = membership(c3_inf))), "Gene")) %>%
+       mutate(Cluster = as.character(Cluster)) %>%
+       group_by(Cluster) %>%
+       mutate(Gene = cell_spec(Gene, background = ifelse(Gene %in% hub_NNM , "#18FFFF", "white"))) %>%
+       nest() %>%
+       kable(escape = F,  booktabs=T, col.names = c("Cluster", "Content"), caption = "Normal_Nonmutant") %>%
+       kable_styling()
+mc3_inf
+
+```
+
+
+**<span style="color: blue;">Hub genes based on <span style="color: #E91E63;"> Markov Blanket size</span></span>**
+
+ 
+```{r, echo = FALSE, fig.align = 'center', fig.width = 8, fig.height = 8}
+mblist_MNM = list()
+for(i in 1:length(nodes(dag1_MNM))){
+  mblist_MNM[[i]] = mb(dag1_MNM, nodes(dag1_MNM)[i])
+}
+
+MB_MNM = tibble(Gene = unique(nodes(dag1_MNM)), MB = unique(mblist_MNM)) %>%
+         mutate(Size =  sapply(mblist_MNM , length)) %>%
+         arrange(desc(Size)) %>%
+         mutate(row_name = row_number())%>% 
+         head(10) %>%
+         select("row_name", "Gene", "Size", "MB") %>%
+         kable(escape = F, booktabs=T, col.names = c("", "Gene", "MB Size", "Content"), caption = "Mutant_Nonmutant") %>%
+         kable_styling()
+MB_MNM
+
+
+mblist_NM = list()
+for(i in 1:length(nodes(dag1_NM))){
+  mblist_NM[[i]] = mb(dag1_NM, nodes(dag1_NM)[i])
+}
+
+
+MB_NM = tibble(Gene = unique(nodes(dag1_NM)), MB = unique(mblist_NM)) %>%
+         mutate(Size =  sapply(mblist_NM , length)) %>%
+         arrange(desc(Size)) %>%
+         mutate(row_name = row_number())%>% 
+         head(10) %>%
+         select("row_name", "Gene", "Size", "MB") %>%
+         kable(escape = F, booktabs=T, col.names = c("", "Gene", "MB Size", "Content"), caption = "Normal_Mutant") %>%
+         kable_styling()
+MB_NM
+
+
+mblist_NNM = list()
+for(i in 1:length(nodes(dag1_NNM))){
+  mblist_NNM[[i]] = mb(dag1_NNM, nodes(dag1_NNM)[i])
+}
+
+MB_NNM = tibble(Gene = unique(nodes(dag1_NNM)), MB = unique(mblist_NNM)) %>%
+         mutate(Size =  sapply(mblist_NNM , length)) %>%
+         arrange(desc(Size)) %>%
+         mutate(row_name = row_number())%>% 
+         head(10) %>%
+         select("row_name", "Gene", "Size", "MB") %>%
+         kable(escape = F, booktabs=T, col.names = c("", "Gene", "MB Size", "Content"), caption = "Normal_Nonmutant") %>%
+         kable_styling()
+MB_NNM
+           
+```
+
+```{r, echo = FALSE, fig.align = 'center', fig.width = 8, fig.height = 8}
+#export adjacency matrix
+
+#adj_MNM = as.data.frame(as.matrix(as_adjacency_matrix(ig1_MNM)))
+ #write.csv(adj_MNM, file = "adj_MNM.csv")
+ 
+#adj_NM = as.data.frame(as.matrix(as_adjacency_matrix(ig1_NM)))
+ #write.csv(adj_NM, file = "adj_NM.csv")
+ 
+#adj_NNM = as.data.frame(as.matrix(as_adjacency_matrix(ig1_NNM)))
+ #write.csv(adj_NNM, file = "adj_NNM.csv")
+ 
+  
+ 
+
+```
